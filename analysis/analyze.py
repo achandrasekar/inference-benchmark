@@ -4,8 +4,8 @@ import os
 import argparse
 
 # Helper function for plotting
-def _create_plot(x_data, y_data, c_data, x_label, y_label, c_label_text, title, output_filename_base):
-    """Helper function to generate and save a scatter plot."""
+def _create_plot(x_data, y_data, c_data, x_label, y_label, c_label_text, title, output_filename_base, annotation_data=None, annotation_format_string="{val} qps"):
+    """Helper function to generate and save a scatter plot with configurable annotations."""
     if not x_data or not y_data or not c_data: # Check if any essential list is empty
         print(f"No valid data for '{title}'. Cannot generate plot.")
         return
@@ -20,9 +20,11 @@ def _create_plot(x_data, y_data, c_data, x_label, y_label, c_label_text, title, 
     cbar = plt.colorbar(scatter)
     cbar.set_label(c_label_text)
 
-    # Annotate each point with its request rate (c_data)
-    for i, rate in enumerate(c_data):
-        plt.annotate(f'{rate} qps', (x_data[i], y_data[i]), textcoords="offset points", xytext=(0,10), ha='center')
+    # Annotate each point. Default to c_data if annotation_data is not provided.
+    data_for_annotation = annotation_data if annotation_data is not None else c_data
+    for i, val in enumerate(data_for_annotation):
+        annotation_text = annotation_format_string.format(val=val)
+        plt.annotate(annotation_text, (x_data[i], y_data[i]), textcoords="offset points", xytext=(0,10), ha='center')
 
     plt.grid(True)
     output_filename = f'{output_filename_base}.png'
@@ -161,7 +163,9 @@ def parse_and_plot(folder_path, instance_price_per_hour=None):
             y_label='$ per Million Output Tokens',
             c_label_text='Request Rate (QPS)',
             title='Cost per Million Output Tokens vs. Normalized Latency',
-            output_filename_base='cost_vs_normalized_latency'
+            output_filename_base='cost_vs_normalized_latency',
+            annotation_data=plot3_costs_per_million_tokens,
+            annotation_format_string="${val:.2f}"
         )
     else:
         print("Skipping cost plot as --instance-price-per-hour was not provided.")
