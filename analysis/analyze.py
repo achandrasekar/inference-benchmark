@@ -33,6 +33,31 @@ def _create_plot(x_data, y_data, c_data, x_label, y_label, c_label_text, title, 
     plt.show()
     plt.close() # Close the figure to free up memory
 
+def _print_summary(parsed_data_points):
+    """Prints a summary of the best performing data points."""
+    if not parsed_data_points:
+        return
+
+    print("\n--- Benchmark Summary ---")
+
+    # --- Find Max Throughput and Best Price/Performance---
+    # Filter out points that might be missing the throughput key, though current logic prevents this.
+    valid_throughput_points = [p for p in parsed_data_points if p.get("throughput") is not None]
+    if valid_throughput_points:
+        max_throughput_point = max(valid_throughput_points, key=lambda p: p["throughput"])
+        print("\n🏆 Best Throughput / Best Price/Performance:")
+        print(f"  - File: {max_throughput_point['filename']}")
+        print(f"  - Throughput: {max_throughput_point['throughput']:.2f} tokens/sec")
+        print(f"  - Request Rate: {max_throughput_point['request_rate']} qps")
+        if max_throughput_point.get('latency') is not None:
+            print(f"  - Avg Per Token Latency: {max_throughput_point['latency']:.2f} ms")
+        if max_throughput_point.get('normalized_latency') is not None:
+            print(f"  - Avg Normalized Latency: {max_throughput_point['normalized_latency']:.2f} ms")
+        if max_throughput_point.get('cost_per_million_tokens') is not None:
+            print(f"  - Cost: ${max_throughput_point['cost_per_million_tokens']:.2f} per million tokens")
+
+    print("\n-----------------------\n")
+
 def parse_and_plot(folder_path, instance_price_per_hour=None):
     """
     Scans a folder for JSON files, extracts benchmark metrics, and plots
@@ -101,6 +126,9 @@ def parse_and_plot(folder_path, instance_price_per_hour=None):
     if not parsed_data_points:
         print("No data points with core metrics (throughput, request_rate) were parsed. Cannot generate any plots.")
         return
+
+    # Print summary before generating plots
+    _print_summary(parsed_data_points)
 
     # --- Plot 1: Throughput vs. Per Token Latency ---
     plot1_throughputs = []
