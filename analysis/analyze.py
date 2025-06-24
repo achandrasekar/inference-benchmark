@@ -68,6 +68,8 @@ def _print_summary(parsed_data_points):
             print(f"  - Avg Per Token Latency: {max_throughput_point['latency']:.2f} ms")
         if max_throughput_point.get('normalized_latency') is not None:
             print(f"  - Avg Normalized Latency: {max_throughput_point['normalized_latency']:.2f} ms")
+        if max_throughput_point.get('p90_normalized_latency') is not None:
+            print(f"  - P90 Normalized Latency: {max_throughput_point['p90_normalized_latency']:.2f} ms")
         if max_throughput_point.get('cost_per_million_tokens') is not None:
             print(f"  - Cost: ${max_throughput_point['cost_per_million_tokens']:.2f} per million tokens")
 
@@ -93,6 +95,7 @@ def _parse_folder_data(folder_path, instance_price_per_hour):
                 throughput = metrics.get("throughput")
                 latency = metrics.get("avg_per_token_latency_ms")
                 normalized_latency = metrics.get("avg_normalized_time_per_output_token_ms")
+                p90_normalized_latency = metrics.get("p90_normalized_time_per_output_token_ms")
                 request_rate = metrics.get("request_rate")
 
                 if throughput is not None and request_rate is not None:
@@ -100,6 +103,7 @@ def _parse_folder_data(folder_path, instance_price_per_hour):
                         "throughput": throughput,
                         "latency": latency,
                         "normalized_latency": normalized_latency,
+                        "p90_normalized_latency": p90_normalized_latency,
                         "request_rate": request_rate,
                         "filename": filename
                     }
@@ -117,6 +121,8 @@ def _parse_folder_data(folder_path, instance_price_per_hour):
                         print(f"  - Note: 'avg_per_token_latency_ms' not found in {filename}.")
                     if normalized_latency is None:
                         print(f"  - Note: 'avg_normalized_time_per_output_token_ms' not found in {filename}.")
+                    if p90_normalized_latency is None:
+                        print(f"  - Note: 'p90_normalized_time_per_output_token_ms' not found in {filename}.")
                 else:
                     missing_core = []
                     if throughput is None: missing_core.append("'throughput'")
@@ -194,12 +200,25 @@ def analyze_and_plot(folder_paths, instance_price_per_hour=None):
     else:
         print("No data available for 'Throughput vs. Normalized Per Token Latency' plot.")
 
-    # --- Plot 3: Cost per Million Output Tokens vs. Normalized Per Token Latency ---
+    # --- Plot 3: Throughput vs. P90 Normalized Per Token Latency ---
+    plot3_data = _prepare_plot_data(all_folders_data, x_key='p90_normalized_latency', y_key='throughput')
+    if plot3_data:
+        _create_line_plot(
+            all_series_data=plot3_data,
+            x_label='P90 Normalized Time Per Output Token (ms)',
+            y_label='Throughput (output tokens/sec)',
+            title='Throughput vs. P90 Normalized Per Token Latency',
+            output_filename_base='throughput_vs_p90_normalized_latency_comparison'
+        )
+    else:
+        print("No data available for 'Throughput vs. P90 Normalized Per Token Latency' plot.")
+
+    # --- Plot 4: Cost per Million Output Tokens vs. Normalized Per Token Latency ---
     if instance_price_per_hour is not None:
-        plot3_data = _prepare_plot_data(all_folders_data, x_key='normalized_latency', y_key='cost_per_million_tokens')
-        if plot3_data:
+        plot4_data = _prepare_plot_data(all_folders_data, x_key='normalized_latency', y_key='cost_per_million_tokens')
+        if plot4_data:
             _create_line_plot(
-                all_series_data=plot3_data,
+                all_series_data=plot4_data,
                 x_label='Average Normalized Time Per Output Token (ms)',
                 y_label='$ per Million Output Tokens',
                 title='Cost per Million Output Tokens vs. Normalized Latency',
@@ -209,6 +228,32 @@ def analyze_and_plot(folder_paths, instance_price_per_hour=None):
             print("No data available for 'Cost vs. Normalized Latency' plot.")
     else:
         print("Skipping cost plot as --instance-price-per-hour was not provided.")
+
+    # --- Plot 5: Throughput vs. Request Rate (QPS) ---
+    plot5_data = _prepare_plot_data(all_folders_data, x_key='request_rate', y_key='throughput')
+    if plot5_data:
+        _create_line_plot(
+            all_series_data=plot5_data,
+            x_label='Request Rate (QPS)',
+            y_label='Throughput (output tokens/sec)',
+            title='Throughput vs. Request Rate (QPS)',
+            output_filename_base='throughput_vs_qps_comparison'
+        )
+    else:
+        print("No data available for 'Throughput vs. Request Rate (QPS)' plot.")
+
+    # --- Plot 6: P90 Normalized Latency vs. Request Rate (QPS) ---
+    plot6_data = _prepare_plot_data(all_folders_data, x_key='request_rate', y_key='p90_normalized_latency')
+    if plot6_data:
+        _create_line_plot(
+            all_series_data=plot6_data,
+            x_label='Request Rate (QPS)',
+            y_label='P90 Normalized Time Per Output Token (ms)',
+            title='P90 Normalized Latency vs. Request Rate (QPS)',
+            output_filename_base='p90_latency_vs_qps_comparison'
+        )
+    else:
+        print("No data available for 'P90 Normalized Latency vs. Request Rate (QPS)' plot.")
 
 if __name__ == '__main__':
     # Set up an argument parser to get the folder path from the command line
